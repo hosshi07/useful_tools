@@ -116,6 +116,7 @@ export default function App() {
 
   const appStateRef = useRef(appState);
   const roomCodeRef = useRef(roomCode);
+  const gameOverRef = useRef(gameOver);
 
   useEffect(() => {
     appStateRef.current = appState;
@@ -124,6 +125,10 @@ export default function App() {
   useEffect(() => {
     roomCodeRef.current = roomCode;
   }, [roomCode]);
+
+  useEffect(() => {
+    gameOverRef.current = gameOver;
+  }, [gameOver]);
 
   const canvasRef = useRef(null);
   const holdRef = useRef(null);
@@ -150,7 +155,7 @@ export default function App() {
         return;
       }
 
-      if (gameOver) return;
+      if (gameOverRef.current) return;
       
       const game = gameRef.current;
       let stateChanged = false;
@@ -192,6 +197,7 @@ export default function App() {
         setRenText(game.renText);
         if (game.state === 'gameover') {
           setGameOver(true);
+          gameOverRef.current = true;
           if (appStateRef.current === '2p_game') socket?.emit('game_over', { roomCode: roomCodeRef.current });
         }
         drawAll();
@@ -265,7 +271,7 @@ export default function App() {
 
     const game = gameRef.current;
 
-    if (game && !gameOver) {
+    if (game && !gameOverRef.current) {
       // Process DAS
       const dasState = dasTimerRef.current;
       if (dasState.activeKey) {
@@ -301,6 +307,7 @@ export default function App() {
              setRenText(game.renText);
              if (game.state === 'gameover') {
                setGameOver(true);
+               gameOverRef.current = true;
                if (appStateRef.current === '2p_game') socket?.emit('game_over', { roomCode: roomCodeRef.current });
              }
           }
@@ -322,6 +329,7 @@ export default function App() {
     setActionText('');
     setRenText('');
     setGameOver(false);
+    gameOverRef.current = false;
     setOpponentGameOver(false);
     lastTimeRef.current = performance.now();
     dropCounterRef.current = 0;
@@ -366,11 +374,12 @@ export default function App() {
     });
 
     socket.on('receive_garbage', (data) => {
-      if (gameRef.current && !gameOver) {
+      if (gameRef.current && !gameOverRef.current) {
         gameRef.current.enemyAttack(data.lines);
         if (gameRef.current.state === 'gameover') {
           setGameOver(true);
-          socket.emit('game_over', { roomCode });
+          gameOverRef.current = true;
+          socket.emit('game_over', { roomCode: roomCodeRef.current });
         }
         drawAll();
       }
@@ -379,6 +388,7 @@ export default function App() {
     socket.on('opponent_game_over', () => {
       setOpponentGameOver(true);
       setGameOver(true);
+      gameOverRef.current = true;
       if (gameRef.current) {
         gameRef.current.state = 'gameover';
       }
