@@ -198,7 +198,10 @@ export default function App() {
         if (game.state === 'gameover') {
           setGameOver(true);
           gameOverRef.current = true;
-          if (appStateRef.current === '2p_game') socket?.emit('game_over', { roomCode: roomCodeRef.current });
+          if (appStateRef.current === '2p_game') {
+            socket?.emit('game_over', { roomCode: roomCodeRef.current });
+            socket?.emit('leave_room', roomCodeRef.current);
+          }
         }
         drawAll();
         if (appStateRef.current === '2p_game') emitState();
@@ -308,7 +311,10 @@ export default function App() {
              if (game.state === 'gameover') {
                setGameOver(true);
                gameOverRef.current = true;
-               if (appStateRef.current === '2p_game') socket?.emit('game_over', { roomCode: roomCodeRef.current });
+               if (appStateRef.current === '2p_game') {
+                 socket?.emit('game_over', { roomCode: roomCodeRef.current });
+                 socket?.emit('leave_room', roomCodeRef.current);
+               }
              }
           }
         } else {
@@ -340,6 +346,15 @@ export default function App() {
     update();
   };
 
+  const returnToTitle = () => {
+    if (socket && roomCodeRef.current && appStateRef.current !== '1p_game') {
+      socket.emit('leave_room', roomCodeRef.current);
+    }
+    setAppState('title');
+    setRoomCode('');
+    roomCodeRef.current = '';
+  };
+
   // Socket setup
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
@@ -357,7 +372,7 @@ export default function App() {
 
     socket.on('room_full', () => {
       alert("Room is full!");
-      setAppState('title');
+      returnToTitle();
     });
 
     socket.on('game_start', () => {
@@ -380,6 +395,7 @@ export default function App() {
           setGameOver(true);
           gameOverRef.current = true;
           socket.emit('game_over', { roomCode: roomCodeRef.current });
+          socket.emit('leave_room', roomCodeRef.current);
         }
         drawAll();
       }
@@ -392,11 +408,14 @@ export default function App() {
       if (gameRef.current) {
         gameRef.current.state = 'gameover';
       }
+      socket.emit('leave_room', roomCodeRef.current);
     });
     
     socket.on('opponent_disconnected', () => {
-      alert("Opponent disconnected.");
-      setAppState('title');
+      if (!gameOverRef.current) {
+        alert("Opponent disconnected.");
+        returnToTitle();
+      }
     });
 
     return () => {
@@ -433,7 +452,7 @@ export default function App() {
             <div className="game-over-text">
               {opponentGameOver ? 'YOU WIN!' : (appState === '2p_game' ? 'YOU LOSE...' : 'GAME OVER')}
             </div>
-            <button className="btn btn-primary" onClick={() => setAppState('title')}>Return to Title</button>
+            <button className="btn btn-primary" onClick={returnToTitle}>Return to Title</button>
           </div>
         )}
       </div>

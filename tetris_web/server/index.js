@@ -62,6 +62,18 @@ io.on('connection', (socket) => {
     socket.to(data.roomCode).emit('opponent_game_over');
   });
 
+  socket.on('leave_room', (roomCode) => {
+    socket.leave(roomCode);
+    if (rooms[roomCode]) {
+      rooms[roomCode] = rooms[roomCode].filter(id => id !== socket.id);
+      if (rooms[roomCode].length === 0) {
+        delete rooms[roomCode];
+      } else {
+        socket.to(roomCode).emit('opponent_disconnected');
+      }
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`User Disconnected: ${socket.id}`);
     // Find rooms this user was in and remove them
