@@ -349,7 +349,7 @@ export default function App() {
     socket.on('receive_state', (data) => {
       if (opponentCanvasRef.current) {
         const ctx = opponentCanvasRef.current.getContext('2d');
-        setOpponentScore(data.score);
+        setOpponentScore(prev => prev !== data.score ? data.score : prev);
         drawGrid(ctx, data.field, -1, data.currentFigure, data.figX, data.figY, data.figColor);
       }
     });
@@ -357,12 +357,20 @@ export default function App() {
     socket.on('receive_garbage', (data) => {
       if (gameRef.current && !gameOver) {
         gameRef.current.enemyAttack(data.lines);
+        if (gameRef.current.state === 'gameover') {
+          setGameOver(true);
+          socket.emit('game_over', { roomCode });
+        }
         drawAll();
       }
     });
 
     socket.on('opponent_game_over', () => {
       setOpponentGameOver(true);
+      setGameOver(true);
+      if (gameRef.current) {
+        gameRef.current.state = 'gameover';
+      }
     });
     
     socket.on('opponent_disconnected', () => {
@@ -401,7 +409,9 @@ export default function App() {
         <canvas ref={canvasRef} width={GRID_WIDTH*CELL_SIZE} height={GRID_HEIGHT*CELL_SIZE}></canvas>
         {gameOver && (
           <div className="game-over-overlay">
-            <div className="game-over-text">GAME OVER</div>
+            <div className="game-over-text">
+              {opponentGameOver ? 'YOU WIN!' : (appState === '2p_game' ? 'YOU LOSE...' : 'GAME OVER')}
+            </div>
             <button className="btn btn-primary" onClick={() => setAppState('title')}>Return to Title</button>
           </div>
         )}
