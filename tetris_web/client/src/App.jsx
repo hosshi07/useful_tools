@@ -4,7 +4,7 @@ import { Tetris } from './game/Tetris';
 import { COLORS, SHAPES, GRID_WIDTH, GRID_HEIGHT } from './game/config';
 import './index.css';
 
-const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '/';
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:3005' : '/';
 const CELL_SIZE = 30;
 const MINI_CELL_SIZE = 20;
 

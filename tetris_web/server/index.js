@@ -15,7 +15,7 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3005;
 
 // Keep track of rooms
 // rooms = { roomCode: [socketId1, socketId2] }
