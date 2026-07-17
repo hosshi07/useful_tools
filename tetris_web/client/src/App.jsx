@@ -114,6 +114,17 @@ export default function App() {
   // Opponent state
   const [opponentScore, setOpponentScore] = useState(0);
 
+  const appStateRef = useRef(appState);
+  const roomCodeRef = useRef(roomCode);
+
+  useEffect(() => {
+    appStateRef.current = appState;
+  }, [appState]);
+
+  useEffect(() => {
+    roomCodeRef.current = roomCode;
+  }, [roomCode]);
+
   const canvasRef = useRef(null);
   const holdRef = useRef(null);
   const nextRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
@@ -161,9 +172,9 @@ export default function App() {
           case 'KeyZ': game.rotateCounterClockwise(); stateChanged = true; break;
           case 'Space': 
             const linesCleared = game.dropSpace(); 
-            if (appState === '2p_game' && linesCleared >= 2 && socket) {
+            if (appStateRef.current === '2p_game' && linesCleared >= 2 && socket) {
               const garbage = linesCleared - 1 + (game.ren > 0 ? 1 : 0);
-              socket.emit('send_garbage', { roomCode, lines: garbage });
+              socket.emit('send_garbage', { roomCode: roomCodeRef.current, lines: garbage });
             }
             stateChanged = true;
             break;
@@ -181,10 +192,10 @@ export default function App() {
         setRenText(game.renText);
         if (game.state === 'gameover') {
           setGameOver(true);
-          if (appState === '2p_game') socket?.emit('game_over', { roomCode });
+          if (appStateRef.current === '2p_game') socket?.emit('game_over', { roomCode: roomCodeRef.current });
         }
         drawAll();
-        if (appState === '2p_game') emitState();
+        if (appStateRef.current === '2p_game') emitState();
       }
     };
 
@@ -212,9 +223,9 @@ export default function App() {
   }, [appState, gameOver, socket, roomCode]);
 
   const emitState = () => {
-    if (socket && gameRef.current && appState === '2p_game') {
+    if (socket && gameRef.current && appStateRef.current === '2p_game') {
       socket.emit('send_state', {
-        roomCode,
+        roomCode: roomCodeRef.current,
         field: gameRef.current.field,
         score: gameRef.current.score,
         currentFigure: gameRef.current.figure,
@@ -267,7 +278,7 @@ export default function App() {
           if (dasState.activeKey === 'ArrowRight') game.moveSide(1);
           if (dasState.activeKey === 'ArrowDown') game.moveDown();
           drawAll();
-          if (appState === '2p_game') emitState();
+          if (appStateRef.current === '2p_game') emitState();
         }
       }
 
@@ -281,16 +292,16 @@ export default function App() {
           game.lockDelayTimer += 100; // rough approximation per drop step
           if (game.lockDelayTimer >= 300) { // Set lock delay limit to 300ms
              const linesCleared = game.freeze();
-             if (appState === '2p_game' && linesCleared >= 2 && socket) {
+             if (appStateRef.current === '2p_game' && linesCleared >= 2 && socket) {
                 const garbage = linesCleared - 1 + (game.ren > 0 ? 1 : 0);
-                socket.emit('send_garbage', { roomCode, lines: garbage });
+                socket.emit('send_garbage', { roomCode: roomCodeRef.current, lines: garbage });
              }
              setScore(game.score);
              setActionText(game.lastActionText);
              setRenText(game.renText);
              if (game.state === 'gameover') {
                setGameOver(true);
-               if (appState === '2p_game') socket?.emit('game_over', { roomCode });
+               if (appStateRef.current === '2p_game') socket?.emit('game_over', { roomCode: roomCodeRef.current });
              }
           }
         } else {
@@ -298,7 +309,7 @@ export default function App() {
           game.moveDown();
         }
         drawAll();
-        if (appState === '2p_game') emitState();
+        if (appStateRef.current === '2p_game') emitState();
       }
     }
     
