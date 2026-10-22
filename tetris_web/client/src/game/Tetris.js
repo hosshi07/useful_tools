@@ -1,4 +1,4 @@
-import { GRID_WIDTH, GRID_HEIGHT, SHAPES, SRS_OFFSETS_NORMAL, SRS_OFFSETS_I } from './config';
+import { GRID_WIDTH, GRID_HEIGHT, SHAPES, SRS_OFFSETS_NORMAL, SRS_OFFSETS_I } from './config.js';
 
 export class Tetris {
   constructor(height = GRID_HEIGHT, width = GRID_WIDTH) {
@@ -11,9 +11,12 @@ export class Tetris {
   reset() {
     this.field = Array.from({ length: this.height }, () => Array(this.width).fill(0));
     this.score = 0;
+    this.lines = 0;
     this.ren = -1;
+    this.b2b = -1;
     this.lastActionText = "";
     this.renText = "";
+    this.lastEvent = null;
 
     this.bag = [];
     this.nextQueue = [];
@@ -23,7 +26,8 @@ export class Tetris {
     this.hasHeldThisTurn = false;
 
     this.lockDelayTimer = 0;
-    this.lockDelayLimit = 30; // approx 500ms at 60fps
+    this.lockResetCount = 0;
+    this.lowestY = 0;
 
     this.newFigure();
   }
@@ -60,11 +64,14 @@ export class Tetris {
     this.rotationState = 0;
     this.hasHeldThisTurn = false;
     this.wasLastMoveRotation = false;
+    this.lastKickIndex = 0;
     this.lockDelayTimer = 0;
+    this.lockResetCount = 0;
+    this.lowestY = this.figureY;
   }
 
   hold() {
-    if (this.hasHeldThisTurn) return;
+    if (this.hasHeldThisTurn) return false;
 
     if (this.holdFigureType === null) {
       this.holdFigureType = this.figureType;
@@ -79,10 +86,15 @@ export class Tetris {
       this.figureX = 3;
       this.figureY = this.figureType === 1 ? -1 : 0;
       this.rotationState = 0;
+      this.wasLastMoveRotation = false;
+      this.lastKickIndex = 0;
+      this.lockDelayTimer = 0;
+      this.lockResetCount = 0;
+      this.lowestY = this.figureY;
     }
 
     this.hasHeldThisTurn = true;
-    this.lockDelayTimer = 0;
+    return true;
   }
 
   intersects(fx, fy, fig = this.figure) {
@@ -107,6 +119,15 @@ export class Tetris {
     return false;
   }
 
+  isImmobile() {
+    return (
+      this.intersects(this.figureX - 1, this.figureY) &&
+      this.intersects(this.figureX + 1, this.figureY) &&
+      this.intersects(this.figureX, this.figureY - 1) &&
+      this.intersects(this.figureX, this.figureY + 1)
+    );
+  }
+
   checkTSpin() {
     if (this.figureType !== 6 || !this.wasLastMoveRotation) return false;
 
@@ -129,42 +150,45 @@ export class Tetris {
     return filledCount >= 3;
   }
 
-  rotate() {
-    if (this.figureType === 4) return; // O shape
-    const oldRot = this.rotationState;
-    const newRot = (oldRot + 1) % 4;
-    
-    // Rotate 90 degrees clockwise
-    const rotated = this.figure[0].map((val, index) =>
-      this.figure.map(row => row[index]).reverse()
-    );
+  checkSpinType() {
+    if (!this.wasLastMoveRotation) return null;
+    if (this.figureType === 6) {
+      if (this.checkTSpin() || this.isImmobile()) return 'T-SPIN';
+      return null;
+    }
+    if (this.figureType !== 4 && this.isImmobile()) {
+      const names = { 1: 'I-SPIN', 2: 'J-SPIN', 3: 'L-SPIN', 5: 'S-SPIN', 7: 'Z-SPIN' };
+      return names[this.figureType] || 'ALL-SPIN';
+    }
+    return null;
+  }
 
-    const table = this.figureType === 1 ? SRS_OFFSETS_I : SRS_OFFSETS_NORMAL;
-    const offsets = table[`${oldRot},${newRot}`];
-
-    for (const [dx, dy] of offsets) {
-      if (!this.intersects(this.figureX + dx, this.figureY - dy, rotated)) { // note: python was +dy, but pygame uses inverted Y, so check coordinates carefully. Pygame y goes down. Wait, original python SRS offsets had (dx, dy). In Pygame, +dy is DOWN. Let's look at the offsets: (0, 2) means down 2 in Pygame? Actually SRS standard y is + up. In Python, my `intersects` did `i + f_y`. So in Python, `self.figure_y += dy`. If `dy` is positive, it goes DOWN. Let's use `+ dy`. But standard SRS has Y up. I will just use `+ dy` as in Python.
-        this.figureX += dx;
-        this.figureY -= dy; // In SRS Y is up, but grid Y is down. Wait, Python did: `self.figure_y += dy`. Let's stick to original Python if we want identical behavior. Let's look at the python code: `self.figure_y += dy`. Let's do `this.figureY -= dy` because standard SRS offsets Y are up (+y is up). But wait, Python had `self.figure_y += dy`.
-        // Let's re-verify: Python code: `self.figure_y += dy`. I will use `this.figureY += dy` if Python did that, but maybe Python offsets were already inverted?
-        // Let's look at Python: `(0, 1): [(0, 0), (-1, 0), (-1, -1), (0,  2), (-1,  2)]`.
-        // Wait, Python SRS_OFFSETS_NORMAL `0,1` is `(0,0), (-1,0), (-1,-1), (0, 2), (-1, 2)`. This matches standard SRS if +dy is UP. If +dy is UP, then in a +y DOWN grid (like canvas), we should subtract dy: `this.figureY -= dy`. So `this.figureY -= dy` is correct.
-      }
+  _resetLockDelayOnMove() {
+    if (this.figureY > this.lowestY) {
+      this.lowestY = this.figureY;
+      this.lockResetCount = 0;
+      this.lockDelayTimer = 0;
+    } else if (this.lockResetCount < 15) {
+      this.lockDelayTimer = 0;
+      this.lockResetCount++;
     }
   }
 
-  // Implementing accurate rotation based on standard SRS and Pygame equivalent
   _performRotate(rotated, newRot, offsets) {
-    for (const [dx, dy] of offsets) {
-      if (!this.intersects(this.figureX + dx, this.figureY - dy, rotated)) {
+    for (let idx = 0; idx < offsets.length; idx++) {
+      const [dx, dy] = offsets[idx];
+      // Standard SRS table uses +Y as UP; our grid uses +Y as DOWN, so we use +dy for Y offset
+      // Wait: in config.js, SRS_OFFSETS_NORMAL has '0,1': [[0,0], [-1,0], [-1,-1], [0,2], [-1,2]]
+      // Where test 3 (-1,-1) in screen coords (Y down) is left 1, up 1, and test 4 (0,2) is down 2 (TST kick)!
+      // Therefore, this.figureY + dy is the exact screen-coordinate offset!
+      if (!this.intersects(this.figureX + dx, this.figureY + dy, rotated)) {
         this.figureX += dx;
-        this.figureY -= dy;
+        this.figureY += dy;
         this.figure = rotated;
         this.rotationState = newRot;
         this.wasLastMoveRotation = true;
-        if (this.intersects(this.figureX, this.figureY + 1)) {
-          this.lockDelayTimer = Math.max(0, this.lockDelayTimer - 10);
-        }
+        this.lastKickIndex = idx;
+        this._resetLockDelayOnMove();
         return true;
       }
     }
@@ -172,69 +196,117 @@ export class Tetris {
   }
 
   rotateClockwise() {
-    if (this.figureType === 4) return;
+    if (this.figureType === 4) return false;
     const oldRot = this.rotationState;
     const newRot = (oldRot + 1) % 4;
     const rotated = this.figure[0].map((_, i) => this.figure.map(row => row[i]).reverse());
     const table = this.figureType === 1 ? SRS_OFFSETS_I : SRS_OFFSETS_NORMAL;
-    const offsets = table[`${oldRot},${newRot}`];
-    this._performRotate(rotated, newRot, offsets);
+    const extra = (this.figureType !== 1 && table[`${oldRot},${newRot}_tst`]) || [];
+    const offsets = [...table[`${oldRot},${newRot}`], ...extra];
+    return this._performRotate(rotated, newRot, offsets);
   }
 
   rotateCounterClockwise() {
-    if (this.figureType === 4) return;
+    if (this.figureType === 4) return false;
     const oldRot = this.rotationState;
     const newRot = (oldRot - 1 + 4) % 4;
     const rotated = this.figure[0].map((_, i) => this.figure.map(row => row[row.length - 1 - i]));
     const table = this.figureType === 1 ? SRS_OFFSETS_I : SRS_OFFSETS_NORMAL;
-    const offsets = table[`${oldRot},${newRot}`];
-    this._performRotate(rotated, newRot, offsets);
+    const extra = (this.figureType !== 1 && table[`${oldRot},${newRot}_tst`]) || [];
+    const offsets = [...table[`${oldRot},${newRot}`], ...extra];
+    return this._performRotate(rotated, newRot, offsets);
+  }
+
+  rotate180() {
+    if (this.figureType === 4) return false;
+    const oldRot = this.rotationState;
+    const newRot = (oldRot + 2) % 4;
+    const rotated = this.figure.map(row => [...row].reverse()).reverse();
+    const offsets = [
+      [0, 0],
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1]
+    ];
+    return this._performRotate(rotated, newRot, offsets);
   }
 
   freeze() {
-    const isTSpin = this.checkTSpin();
-    let linesClearedAmount = 0;
+    const spinType = this.checkSpinType();
+    const lockedCells = [];
 
     for (let i = 0; i < this.figure.length; i++) {
       for (let j = 0; j < this.figure[i].length; j++) {
         if (this.figure[i][j]) {
-          if (i + this.figureY >= 0) {
-            this.field[i + this.figureY][j + this.figureX] = this.figureColor;
+          const r = i + this.figureY;
+          const c = j + this.figureX;
+          if (r >= 0 && r < this.height && c >= 0 && c < this.width) {
+            this.field[r][c] = this.figureColor;
+            lockedCells.push({ x: c, y: r, color: this.figureColor });
           }
         }
       }
     }
 
-    linesClearedAmount = this.clearLines(isTSpin);
+    const clearResult = this.clearLines(spinType, lockedCells);
     this.newFigure();
     if (this.intersects(this.figureX, this.figureY)) {
       this.state = "gameover";
     }
-    return linesClearedAmount;
+    return clearResult.linesCleared;
   }
 
-  clearLines(isTSpin) {
-    let lines = 0;
+  clearLines(spinType, lockedCells = []) {
+    const clearedRowIndices = [];
     for (let i = 0; i < this.height; i++) {
       if (!this.field[i].includes(0)) {
-        lines++;
-        this.field.splice(i, 1);
-        this.field.unshift(Array(this.width).fill(0));
+        clearedRowIndices.push(i);
       }
     }
 
+    const lines = clearedRowIndices.length;
+    for (const rowIndex of clearedRowIndices) {
+      this.field.splice(rowIndex, 1);
+      this.field.unshift(Array(this.width).fill(0));
+    }
+
+    const isPerfectClear = lines > 0 && this.field.every(row => row.every(cell => cell === 0));
+
     if (lines > 0) {
+      this.lines += lines;
       this.ren += 1;
       let baseGain = 0;
-      if (isTSpin) {
-        if (lines === 1) { baseGain = 800; this.lastActionText = "T-SPIN SINGLE"; }
-        else if (lines === 2) { baseGain = 1200; this.lastActionText = "T-SPIN DOUBLE!!"; }
-        else if (lines === 3) { baseGain = 1600; this.lastActionText = "T-SPIN TRIPLE!!!"; }
+      const isDifficult = Boolean(spinType) || lines === 4;
+
+      if (spinType) {
+        if (lines === 1) { baseGain = spinType === 'T-SPIN' ? 800 : 400; this.lastActionText = `${spinType} SINGLE`; }
+        else if (lines === 2) { baseGain = spinType === 'T-SPIN' ? 1200 : 800; this.lastActionText = `${spinType} DOUBLE!!`; }
+        else if (lines === 3) { baseGain = spinType === 'T-SPIN' ? 1600 : 1200; this.lastActionText = `${spinType} TRIPLE!!!`; }
       } else {
         if (lines === 1) { baseGain = 100; this.lastActionText = "SINGLE"; }
         else if (lines === 2) { baseGain = 300; this.lastActionText = "DOUBLE"; }
         else if (lines === 3) { baseGain = 500; this.lastActionText = "TRIPLE"; }
         else if (lines === 4) { baseGain = 800; this.lastActionText = "TETRIS!"; }
+      }
+
+      if (isDifficult) {
+        this.b2b += 1;
+        if (this.b2b > 0) {
+          baseGain = Math.floor(baseGain * 1.5);
+          this.lastActionText = `B2B ${this.lastActionText}`;
+        }
+      } else {
+        this.b2b = -1;
+      }
+
+      if (isPerfectClear) {
+        baseGain += 3000;
+        this.lastActionText = `PERFECT CLEAR!`;
       }
 
       const renGain = this.ren > 0 ? this.ren * 50 : 0;
@@ -243,38 +315,67 @@ export class Tetris {
 
       this.score += baseGain + renGain;
     } else {
-      if (isTSpin) {
-        this.score += 400;
-        this.lastActionText = "T-SPIN";
+      if (spinType) {
+        this.score += spinType === 'T-SPIN' ? 400 : 200;
+        this.lastActionText = spinType;
+      } else {
+        this.lastActionText = "";
       }
       this.ren = -1;
       this.renText = "";
     }
-    return lines;
+
+    this.lastEvent = {
+      linesCleared: lines,
+      clearedRows: clearedRowIndices,
+      spinType,
+      isPerfectClear,
+      ren: this.ren,
+      b2b: this.b2b,
+      actionText: this.lastActionText,
+      renText: this.renText,
+      lockedCells,
+      timestamp: performance.now()
+    };
+
+    return { linesCleared: lines, clearedRows: clearedRowIndices };
   }
 
   dropSpace() {
+    let dropDist = 0;
     while (!this.intersects(this.figureX, this.figureY + 1)) {
       this.figureY++;
+      dropDist++;
+    }
+    if (dropDist > 0) {
+      this.wasLastMoveRotation = false;
+      this.score += dropDist * 2;
     }
     return this.freeze();
   }
 
   moveDown() {
-    this.figureY++;
-    if (this.intersects(this.figureX, this.figureY)) {
-      this.figureY--;
+    if (!this.intersects(this.figureX, this.figureY + 1)) {
+      this.figureY++;
+      this.wasLastMoveRotation = false;
+      if (this.figureY > this.lowestY) {
+        this.lowestY = this.figureY;
+        this.lockResetCount = 0;
+        this.lockDelayTimer = 0;
+      }
+      return true;
     }
+    return false;
   }
 
   moveSide(dx) {
     if (!this.intersects(this.figureX + dx, this.figureY)) {
       this.figureX += dx;
       this.wasLastMoveRotation = false;
-      if (this.intersects(this.figureX, this.figureY + 1)) {
-        this.lockDelayTimer = Math.max(0, this.lockDelayTimer - 10);
-      }
+      this._resetLockDelayOnMove();
+      return true;
     }
+    return false;
   }
 
   getGhostY() {
@@ -287,22 +388,20 @@ export class Tetris {
 
   enemyAttack(lines) {
     if (lines <= 0) return;
-    
-    // Check if top row has blocks (game over)
-    for(let i=0; i<lines; i++) {
-        if (this.field[0].some(cell => cell > 0)) {
-          this.state = "gameover";
-          return;
-        }
-        
-        // Push up
-        for (let r = 0; r < this.height - 1; r++) {
-          this.field[r] = [...this.field[r + 1]];
-        }
-        
-        const hole = Math.floor(Math.random() * this.width);
-        this.field[this.height - 1] = Array(this.width).fill(8); // 8 is garbage color
-        this.field[this.height - 1][hole] = 0;
+
+    for (let i = 0; i < lines; i++) {
+      if (this.field[0].some(cell => cell > 0)) {
+        this.state = "gameover";
+        return;
+      }
+
+      for (let r = 0; r < this.height - 1; r++) {
+        this.field[r] = [...this.field[r + 1]];
+      }
+
+      const hole = Math.floor(Math.random() * this.width);
+      this.field[this.height - 1] = Array(this.width).fill(8);
+      this.field[this.height - 1][hole] = 0;
     }
   }
 }
