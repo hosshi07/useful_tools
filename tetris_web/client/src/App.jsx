@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { Tetris } from './game/Tetris';
 import { COLORS, SHAPES, GRID_WIDTH, GRID_HEIGHT } from './game/config';
 import { sound } from './game/sound';
-import { THEMES, DEFAULT_THEME_ID, getThemeById } from './game/themes';
+import { THEME_CATALOG, DEFAULT_THEME_ID, loadThemeById } from './game/themes';
 import './index.css';
 
 const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:3005' : '/';
@@ -16,6 +16,12 @@ const DEFAULT_ARR = 22;  // ms per auto-repeat step
 const DEFAULT_SDF = 35;  // ms per soft-drop step
 
 function drawBlock(ctx, x, y, colorIndex, size, alpha = 1.0, isGhost = false, themeObj = null) {
+  // Delegate to theme-specific custom block renderer if defined (e.g. Pixel Art theme)
+  if (themeObj?.canvas?.drawCustomBlock) {
+    themeObj.canvas.drawCustomBlock(ctx, x, y, colorIndex, size, alpha, isGhost);
+    return;
+  }
+
   const baseColor = COLORS[colorIndex] || '#2cff65';
   const px = x * size;
   const py = y * size;
@@ -27,7 +33,6 @@ function drawBlock(ctx, x, y, colorIndex, size, alpha = 1.0, isGhost = false, th
 
   if (isGhost) {
     if (ghostStyle === 'translucent') {
-      // Original Classic Ghost style (0.3 alpha solid block)
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = baseColor;
       ctx.fillRect(px, py, size, size);
@@ -49,7 +54,6 @@ function drawBlock(ctx, x, y, colorIndex, size, alpha = 1.0, isGhost = false, th
   }
 
   if (blockStyle === 'classic') {
-    // Original before_tetris_web block style
     ctx.fillStyle = baseColor;
     ctx.fillRect(px, py, size, size);
 
@@ -94,11 +98,18 @@ function drawBlock(ctx, x, y, colorIndex, size, alpha = 1.0, isGhost = false, th
 function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effects = null, themeObj = null) {
   const widthPx = GRID_WIDTH * CELL_SIZE;
   const heightPx = GRID_HEIGHT * CELL_SIZE;
-  const cv = themeObj?.canvas || THEMES[0].canvas;
+  const cv = themeObj?.canvas || {
+    boardBg: 'rgba(4, 24, 10, 0.92)',
+    scanlines: 'rgba(44, 255, 101, 0.045)',
+    gridLine: 'rgba(65, 255, 115, 0.14)',
+    beamColor: '120, 255, 180',
+    lockFlashColor: '210, 255, 225',
+    lineFlashFill: '180, 255, 210',
+    lineFlashStroke: '44, 255, 101'
+  };
 
   ctx.clearRect(0, 0, widthPx, heightPx);
 
-  // 1. Background & scanlines
   ctx.fillStyle = cv.boardBg;
   ctx.fillRect(0, 0, widthPx, heightPx);
 
@@ -109,7 +120,6 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     }
   }
 
-  // Grid lines
   ctx.strokeStyle = cv.gridLine;
   ctx.lineWidth = 1;
   for (let x = 0; x <= widthPx; x += CELL_SIZE) {
@@ -125,8 +135,8 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     ctx.stroke();
   }
 
-  // 2. Hard drop vertical beam trail
-  if (effects && effects.beams) {
+  // Standard beam trail if theme doesn't override drawCustomEffects
+  if (effects && !cv.drawCustomEffects && effects.beams) {
     for (const beam of effects.beams) {
       const grad = ctx.createLinearGradient(0, beam.startY * CELL_SIZE, 0, beam.endY * CELL_SIZE);
       grad.addColorStop(0, `rgba(${cv.beamColor}, 0)`);
@@ -141,7 +151,6 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     }
   }
 
-  // 3. Draw placed blocks
   for (let r = 0; r < GRID_HEIGHT; r++) {
     for (let c = 0; c < GRID_WIDTH; c++) {
       if (field[r][c] > 0) {
@@ -150,7 +159,6 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     }
   }
 
-  // 4. Draw Ghost & Current Piece
   if (currentFigure) {
     if (ghostY >= 0) {
       for (let i = 0; i < currentFigure.length; i++) {
@@ -175,7 +183,12 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     }
   }
 
-  // 5. Lock flash highlight on newly placed cells
+  // Delegate to theme's custom effects renderer if provided (e.g. Pixel Art theme)
+  if (effects && cv.drawCustomEffects) {
+    cv.drawCustomEffects(ctx, effects, CELL_SIZE, widthPx);
+    return;
+  }
+
   if (effects && effects.lockFlashes) {
     for (const flash of effects.lockFlashes) {
       ctx.fillStyle = `rgba(${cv.lockFlashColor}, ${flash.alpha})`;
@@ -183,7 +196,6 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     }
   }
 
-  // 6. Line clear laser sweep effect
   if (effects && effects.lineFlashes) {
     for (const lf of effects.lineFlashes) {
       const yPx = lf.row * CELL_SIZE;
@@ -196,7 +208,6 @@ function drawGrid(ctx, field, ghostY, currentFigure, figX, figY, figColor, effec
     }
   }
 
-  // 7. Digital particles
   if (effects && effects.particles) {
     for (const p of effects.particles) {
       ctx.save();
@@ -228,31 +239,58 @@ function drawMini(ctx, figType, themeObj = null) {
   }
 }
 
-const Logo = ({ themeId }) => (
-  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M 65 10 A 40 40 0 1 0 95 65 A 35 35 0 0 1 65 10 Z"
-      fill={themeId === 'classic' ? '#ffffff' : '#2cff65'}
-    />
-    <path
-      d="M 75 25 Q 80 25 80 20 Q 80 25 85 25 Q 80 25 80 30 Q 80 25 75 25 Z"
-      fill={themeId === 'classic' ? '#ffffff' : '#eafff0'}
-    />
-  </svg>
-);
+const Logo = ({ themeId }) => {
+  if (themeId === 'pixel') {
+    // 16-bit Pixel Art Crescent Moon & Star SVG
+    return (
+      <svg viewBox="0 0 16 16" shapeRendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M6 1h4v1H8v1H6v2H5v6h1v2h2v1h4v1H6v-1H4v-1H3v-2H2V6h1V4h1V2h2V1z"
+          fill="#ffea00"
+        />
+        <path
+          d="M11 3h1v1h1v1h-1v1h-1V5h-1V4h1V3z"
+          fill="#00e5ff"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M 65 10 A 40 40 0 1 0 95 65 A 35 35 0 0 1 65 10 Z"
+        fill={themeId === 'classic' ? '#ffffff' : '#2cff65'}
+      />
+      <path
+        d="M 75 25 Q 80 25 80 20 Q 80 25 85 25 Q 80 25 80 30 Q 80 25 75 25 Z"
+        fill={themeId === 'classic' ? '#ffffff' : '#eafff0'}
+      />
+    </svg>
+  );
+};
 
-const StarIcon = () => (
-  <svg className="star-icon" viewBox="0 0 24 24" fill="#c7d6ff" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-  </svg>
-);
+const StarIcon = ({ themeId }) => {
+  if (themeId === 'pixel') {
+    return (
+      <svg className="star-icon" viewBox="0 0 12 12" shapeRendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 1h2v3h3v2H8v2h1v3H7V9H5v2H3V8h1V6H2V4h3V1z" fill="#ffea00" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="star-icon" viewBox="0 0 24 24" fill="#c7d6ff" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+    </svg>
+  );
+};
 
 export default function App() {
   const [appState, setAppState] = useState('title'); // title, join_room, 1p_game, 2p_wait, 2p_game
   const [themeId, setThemeId] = useState(() => {
     return localStorage.getItem('tetris_theme_id') || DEFAULT_THEME_ID;
   });
-  const currentTheme = getThemeById(themeId);
+  const [currentTheme, setCurrentTheme] = useState(null);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
   const [roomCode, setRoomCode] = useState('');
   const [socket, setSocket] = useState(null);
@@ -274,15 +312,24 @@ export default function App() {
   const roomCodeRef = useRef(roomCode);
   const gameOverRef = useRef(gameOver);
   const isPausedRef = useRef(isPaused);
-  const themeRef = useRef(currentTheme);
+  const themeRef = useRef(null);
 
   useEffect(() => { appStateRef.current = appState; }, [appState]);
   useEffect(() => { roomCodeRef.current = roomCode; }, [roomCode]);
   useEffect(() => { gameOverRef.current = gameOver; }, [gameOver]);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+
+  // Dynamically load ONLY the selected theme's CSS, sound profile & configuration
   useEffect(() => {
-    themeRef.current = getThemeById(themeId);
-    localStorage.setItem('tetris_theme_id', themeId);
+    let active = true;
+    loadThemeById(themeId).then((loadedConfig) => {
+      if (!active) return;
+      themeRef.current = loadedConfig;
+      sound.setProfile(loadedConfig.soundProfile || 'cyber');
+      setCurrentTheme(loadedConfig);
+      localStorage.setItem('tetris_theme_id', loadedConfig.id);
+    });
+    return () => { active = false; };
   }, [themeId]);
 
   const canvasRef = useRef(null);
@@ -324,7 +371,28 @@ export default function App() {
   const spawnLockAndClearEffects = (game, hardDropStartY = null) => {
     const ev = game.lastEvent;
     if (!ev) return;
-    const cv = themeRef.current.canvas;
+    const cv = themeRef.current?.canvas || {
+      particleNormal: '#2cff65',
+      particleSpin: '#00f5ff'
+    };
+
+    // Sound & board impact shake
+    if (ev.linesCleared > 0) {
+      sound.clear(ev.linesCleared, ev.spinType, ev.ren);
+      triggerBoardImpact(ev.spinType ? 5 : 0, Math.min(10, ev.linesCleared * 2.5));
+    } else if (ev.spinType) {
+      sound.rotate(true);
+    }
+
+    if (ev.actionText || ev.renText) {
+      setCalloutKey(prev => prev + 1);
+    }
+
+    // If the active theme defines its own custom effect spawner, use it!
+    if (cv.spawnCustomEffects) {
+      cv.spawnCustomEffects(effectsRef.current, ev, hardDropStartY, CELL_SIZE, GRID_WIDTH);
+      return;
+    }
 
     if (hardDropStartY !== null && ev.lockedCells && ev.lockedCells.length > 0) {
       const xs = ev.lockedCells.map(c => c.x);
@@ -354,9 +422,6 @@ export default function App() {
     }
 
     if (ev.linesCleared > 0) {
-      sound.clear(ev.linesCleared, ev.spinType, ev.ren);
-      triggerBoardImpact(ev.spinType ? 5 : 0, Math.min(10, ev.linesCleared * 2.5));
-
       ev.clearedRows.forEach(rowIdx => {
         effectsRef.current.lineFlashes.push({
           row: rowIdx,
@@ -374,12 +439,6 @@ export default function App() {
           });
         }
       });
-    } else if (ev.spinType) {
-      sound.rotate(true);
-    }
-
-    if (ev.actionText || ev.renText) {
-      setCalloutKey(prev => prev + 1);
     }
   };
 
@@ -602,7 +661,7 @@ export default function App() {
       const p = fx.particles[i];
       p.x += p.vx * factor;
       p.y += p.vy * factor;
-      p.vy += 0.22 * factor;
+      p.vy += (p.gravity !== undefined ? p.gravity : 0.22) * factor;
       p.life -= 0.032 * factor;
       if (p.life <= 0) fx.particles.splice(i, 1);
     }
@@ -849,7 +908,26 @@ export default function App() {
     if (!sound.muted) sound.uiClick();
   };
 
-  // Render Classic Theme Game UI (Original Glassmorphism Layout + New Sound/Particles/Pause)
+  if (!currentTheme) {
+    return <div className="app-container" />;
+  }
+
+  const isClassic = currentTheme.layout === 'classic';
+  const isPixel = currentTheme.layout === 'pixel';
+
+  const modalClass = isClassic
+    ? 'glass-panel title-screen'
+    : (isPixel ? 'pixel-modal-card' : 'cyber-modal-card');
+  const primaryBtnClass = isClassic
+    ? 'btn btn-primary'
+    : (isPixel ? 'pixel-btn pixel-btn-primary' : 'cyber-btn cyber-btn-primary');
+  const secondaryBtnClass = isClassic
+    ? 'btn'
+    : (isPixel ? 'pixel-btn' : 'cyber-btn');
+  const dangerBtnClass = isClassic
+    ? 'btn'
+    : (isPixel ? 'pixel-btn pixel-btn-danger' : 'cyber-btn cyber-btn-danger');
+
   const renderClassicGameUI = () => (
     <>
       <div className="hud-bottom-right">
@@ -971,11 +1049,11 @@ export default function App() {
     </>
   );
 
-  // Render Cyber Theme Game UI
-  const renderCyberGameUI = () => (
+  // Cyber & Pixel Art Game UI
+  const renderModernHUDGameUI = () => (
     <>
       <div className="hud-top-left">
-        <StarIcon />
+        <StarIcon themeId={currentTheme.id} />
         <span className="hud-score-num">{score.toLocaleString()}</span>
       </div>
 
@@ -1025,8 +1103,12 @@ export default function App() {
         </div>
 
         <div className="board-wrapper">
-          <div className="corner-bracket tl" />
-          <div className="corner-bracket tr" />
+          {!isPixel && (
+            <>
+              <div className="corner-bracket tl" />
+              <div className="corner-bracket tr" />
+            </>
+          )}
 
           <div
             className="board-container"
@@ -1047,13 +1129,17 @@ export default function App() {
 
             {isPaused && appState === '1p_game' && !gameOver && (
               <div className="cyber-overlay">
-                <span className="system-badge">SYSTEM // PAUSED</span>
+                <span className="system-badge">
+                  {isPixel ? 'ARCADE // PAUSE' : 'SYSTEM // PAUSED'}
+                </span>
                 <div className="overlay-title">PAUSED</div>
-                <div className="overlay-subtitle">AWAITING OPERATOR COMMAND</div>
-                <button className="cyber-btn cyber-btn-primary" onClick={togglePause}>
+                <div className="overlay-subtitle">
+                  {isPixel ? 'READY PLAYER ONE' : 'AWAITING OPERATOR COMMAND'}
+                </div>
+                <button className={primaryBtnClass} onClick={togglePause}>
                   RESUME (再開)
                 </button>
-                <button className="cyber-btn cyber-btn-danger" onClick={returnToTitle}>
+                <button className={dangerBtnClass} onClick={returnToTitle}>
                   QUIT (やめる)
                 </button>
               </div>
@@ -1061,14 +1147,16 @@ export default function App() {
 
             {gameOver && (
               <div className="cyber-overlay">
-                <span className="system-badge">SESSION // TERMINATED</span>
+                <span className="system-badge">
+                  {isPixel ? 'STAGE // OVER' : 'SESSION // TERMINATED'}
+                </span>
                 <div className={`overlay-title ${opponentGameOver ? '' : 'danger'}`}>
                   {opponentGameOver ? 'YOU WIN!' : (appState === '2p_game' ? 'YOU LOSE...' : 'GAME OVER')}
                 </div>
                 <div className="overlay-subtitle">FINAL SCORE: {score.toLocaleString()}</div>
                 {appState === '1p_game' && (
                   <button
-                    className="cyber-btn cyber-btn-primary"
+                    className={primaryBtnClass}
                     onClick={() => {
                       sound.uiSelect();
                       startGame();
@@ -1077,18 +1165,20 @@ export default function App() {
                     RETRY (もう一度)
                   </button>
                 )}
-                <button className="cyber-btn" onClick={returnToTitle}>
+                <button className={secondaryBtnClass} onClick={returnToTitle}>
                   TITLE (タイトルへ)
                 </button>
               </div>
             )}
           </div>
 
-          <div className="board-base-layers">
-            <div className="board-base-layer l1" />
-            <div className="board-base-layer l2" />
-            <div className="board-base-layer l3" />
-          </div>
+          {!isPixel && (
+            <div className="board-base-layers">
+              <div className="board-base-layer l1" />
+              <div className="board-base-layer l2" />
+              <div className="board-base-layer l3" />
+            </div>
+          )}
         </div>
 
         <div className="side-column">
@@ -1117,10 +1207,16 @@ export default function App() {
 
         {appState === '2p_game' && (
           <div className="opponent-area">
-            <div className="opponent-header">TARGET // OPPONENT</div>
+            <div className="opponent-header">
+              {isPixel ? '2P RIVAL' : 'TARGET // OPPONENT'}
+            </div>
             <div className="board-wrapper">
-              <div className="corner-bracket tl" />
-              <div className="corner-bracket tr" />
+              {!isPixel && (
+                <>
+                  <div className="corner-bracket tl" />
+                  <div className="corner-bracket tr" />
+                </>
+              )}
               <div className="board-container">
                 <canvas
                   ref={opponentCanvasRef}
@@ -1137,7 +1233,7 @@ export default function App() {
             <div className="cyber-widget" style={{ marginTop: '10px' }}>
               <div className="cyber-widget-header">ENEMY SCORE</div>
               <div className="cyber-widget-body" style={{ minHeight: '50px' }}>
-                <div className="score-widget-value" style={{ fontSize: '1.15rem' }}>
+                <div className="score-widget-value" style={{ fontSize: '1.05rem' }}>
                   {opponentScore.toLocaleString()}
                 </div>
               </div>
@@ -1148,45 +1244,24 @@ export default function App() {
     </>
   );
 
-  const isClassic = currentTheme.layout === 'classic';
-  const modalClass = isClassic ? 'glass-panel title-screen' : 'cyber-modal-card';
-  const primaryBtnClass = isClassic ? 'btn btn-primary' : 'cyber-btn cyber-btn-primary';
-  const secondaryBtnClass = isClassic ? 'btn' : 'cyber-btn';
-  const dangerBtnClass = isClassic ? 'btn' : 'cyber-btn cyber-btn-danger';
-
   return (
     <div className={`app-container theme-${currentTheme.id}`}>
       {appState === 'title' && (
         <div className={modalClass}>
-          {!isClassic && <div className="system-badge">CYBER MATRIX SYSTEM // VER 2.0</div>}
+          {!isClassic && (
+            <div className="system-badge">
+              {isPixel ? '16-BIT ARCADE // EDITION' : 'CYBER MATRIX SYSTEM // VER 2.0'}
+            </div>
+          )}
           <div className="logo-container">
             <Logo themeId={currentTheme.id} />
           </div>
           <h1 className="title-text">HOSSHI TETRIS</h1>
           <p className="subtitle-text">
-            {isClassic ? 'Web Edition' : 'TACTICAL PRO EDITION'}
+            {isClassic
+              ? 'Web Edition'
+              : (isPixel ? 'PIXEL ODYSSEY' : 'TACTICAL PRO EDITION')}
           </p>
-
-          {/* Theme Selector directly in the play mode selection screen */}
-          <div className="theme-selector-section">
-            <span className="theme-selector-label">THEME SELECT (テーマ切替)</span>
-            <div className="theme-selector-grid">
-              {THEMES.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`theme-option-btn ${themeId === t.id ? 'active' : ''}`}
-                  onClick={() => {
-                    sound.uiClick();
-                    setThemeId(t.id);
-                  }}
-                >
-                  <span>{t.label}</span>
-                  <span className="theme-opt-sub">{t.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           <button
             className={primaryBtnClass}
@@ -1209,6 +1284,18 @@ export default function App() {
             {isClassic ? '2 Players (Online)' : '2 PLAYERS (ONLINE)'}
           </button>
 
+          <button
+            className={secondaryBtnClass}
+            onClick={() => {
+              sound.uiClick();
+              setIsThemeModalOpen(true);
+            }}
+          >
+            {isClassic
+              ? `Theme: ${currentTheme.label}`
+              : `THEME (${currentTheme.label})`}
+          </button>
+
           <div className="controls-hint-grid">
             <span><b>← / →</b> : MOVE</span>
             <span><b>↑ / X</b> : ROTATE CW</span>
@@ -1222,10 +1309,74 @@ export default function App() {
         </div>
       )}
 
+      {isThemeModalOpen && (
+        <div
+          className="theme-modal-backdrop"
+          onClick={() => setIsThemeModalOpen(false)}
+        >
+          <div
+            className="theme-modal-box"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="theme-modal-header">
+              <span className="theme-modal-title">SELECT THEME (テーマ選択)</span>
+            </div>
+
+            <div className="theme-list-scroll">
+              {THEME_CATALOG.map((item) => {
+                const isSelected = item.id === currentTheme.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`theme-candidate-item ${isSelected ? 'selected' : ''}`}
+                    style={{ '--candidate-accent': item.accent }}
+                    onClick={() => {
+                      sound.uiSelect();
+                      setThemeId(item.id);
+                      setIsThemeModalOpen(false);
+                    }}
+                  >
+                    <div className="theme-candidate-info">
+                      <div className="theme-candidate-title">
+                        <span
+                          className="theme-color-dot"
+                          style={{ backgroundColor: item.accent }}
+                        />
+                        {item.label}
+                      </div>
+                      <div className="theme-candidate-desc">{item.description}</div>
+                    </div>
+                    <span className="theme-candidate-status">
+                      {isSelected ? 'ACTIVE' : 'SELECT'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              className={secondaryBtnClass}
+              style={{ marginBottom: 0 }}
+              onClick={() => {
+                sound.uiClick();
+                setIsThemeModalOpen(false);
+              }}
+            >
+              {isClassic ? 'Close (閉じる)' : 'CLOSE (閉じる)'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {appState === 'join_room' && (
         <div className={modalClass}>
-          {!isClassic && <div className="system-badge">NETWORK // MULTIPLAYER</div>}
-          <h2 className="title-text" style={{ fontSize: '1.9rem', marginBottom: '12px' }}>
+          {!isClassic && (
+            <div className="system-badge">
+              {isPixel ? 'MULTIPLAYER // VS LINK' : 'NETWORK // MULTIPLAYER'}
+            </div>
+          )}
+          <h2 className="title-text" style={{ fontSize: '1.65rem', marginBottom: '12px' }}>
             {isClassic ? 'Join Room' : 'ACCESS ROOM'}
           </h2>
           <p className="subtitle-text" style={{ marginBottom: '1.2rem' }}>
@@ -1263,8 +1414,12 @@ export default function App() {
 
       {appState === '2p_wait' && (
         <div className={modalClass}>
-          {!isClassic && <div className="system-badge">STANDBY // LINKING</div>}
-          <h2 className="title-text" style={{ fontSize: '1.9rem', marginBottom: '10px' }}>
+          {!isClassic && (
+            <div className="system-badge">
+              {isPixel ? 'WAITING // CHALLENGER' : 'STANDBY // LINKING'}
+            </div>
+          )}
+          <h2 className="title-text" style={{ fontSize: '1.65rem', marginBottom: '10px' }}>
             Room: {roomCode}
           </h2>
           <p className="subtitle-text">Waiting for opponent to join...</p>
@@ -1278,7 +1433,7 @@ export default function App() {
       )}
 
       {(appState === '1p_game' || appState === '2p_game') && (
-        isClassic ? renderClassicGameUI() : renderCyberGameUI()
+        isClassic ? renderClassicGameUI() : renderModernHUDGameUI()
       )}
     </div>
   );

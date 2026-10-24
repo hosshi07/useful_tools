@@ -1,0 +1,380 @@
+/* Modern Pixel Art Theme (Lazy-Loaded)
+   Loads Press Start 2P (arcade Latin/numbers) & DotGothic16 (Japanese pixel font) */
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap');
+
+.app-container.theme-pixel {
+  --pixel-bg-deep: #0b0716;
+  --pixel-bg-card: #161029;
+  --pixel-bg-header: #2a1d4e;
+  --pixel-gold: #ffea00;
+  --pixel-amber: #ff9100;
+  --pixel-cyan: #00e5ff;
+  --pixel-magenta: #ff4081;
+  --pixel-green: #00e676;
+  --pixel-border-light: #e0d4ff;
+  --pixel-border-mid: #7b61ff;
+  --pixel-border-dark: #06030d;
+
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+  background-color: var(--pixel-bg-deep);
+  color: #fffef2;
+  image-rendering: pixelated;
+
+  /* Layered pixel starfield + retro synth horizon grid */
+  background-image:
+    radial-gradient(#ffffff 1px, transparent 1px),
+    radial-gradient(#ffea00 1px, transparent 1px),
+    radial-gradient(#00e5ff 1px, transparent 1px),
+    linear-gradient(180deg, rgba(11, 7, 22, 0.9) 0%, rgba(28, 14, 54, 0.85) 65%, rgba(62, 20, 88, 0.9) 100%),
+    linear-gradient(rgba(123, 97, 255, 0.14) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(123, 97, 255, 0.14) 2px, transparent 2px);
+  background-size:
+    96px 96px,
+    144px 144px,
+    192px 192px,
+    100% 100%,
+    32px 32px,
+    32px 32px;
+  background-position:
+    0 0,
+    40px 60px,
+    90px 20px,
+    0 0,
+    0 0,
+    0 0;
+}
+
+.theme-pixel canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* 8-bit Stepped Pixel Window Frame */
+.theme-pixel .pixel-modal-card {
+  position: relative;
+  background: var(--pixel-bg-card);
+  border: 4px solid var(--pixel-border-light);
+  padding: 2rem 1.8rem;
+  max-width: 460px;
+  width: 92%;
+  text-align: center;
+  box-shadow:
+    0 0 0 4px var(--pixel-border-dark),
+    8px 8px 0 0 rgba(0, 0, 0, 0.75),
+    inset 0 0 0 4px var(--pixel-border-mid);
+}
+
+.theme-pixel .system-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  color: var(--pixel-gold);
+  background: var(--pixel-bg-header);
+  border: 2px solid var(--pixel-gold);
+  padding: 6px 10px;
+  margin-bottom: 14px;
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.theme-pixel .logo-container svg {
+  width: 84px;
+  height: 84px;
+  filter: drop-shadow(4px 4px 0px #000000);
+  animation: pixelBob 1.2s steps(2, end) infinite;
+}
+
+@keyframes pixelBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.theme-pixel .title-text {
+  font-size: 1.75rem;
+  line-height: 1.35;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--pixel-gold);
+  text-shadow:
+    3px 3px 0px #c62828,
+    6px 6px 0px #000000;
+  letter-spacing: 2px;
+}
+
+.theme-pixel .subtitle-text {
+  color: var(--pixel-cyan);
+  margin-bottom: 1.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  text-shadow: 2px 2px 0 #000000;
+}
+
+/* Tactile 16-bit Arcade Buttons */
+.theme-pixel .pixel-btn {
+  position: relative;
+  background: #2b1e54;
+  border: 3px solid #ffffff;
+  color: #ffffff;
+  padding: 13px 16px;
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+  font-size: 0.82rem;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow:
+    inset -3px -3px 0px #140c2e,
+    inset 3px 3px 0px #5e43b0,
+    4px 4px 0px #000000;
+  transition: transform 0.05s steps(1);
+}
+
+.theme-pixel .pixel-btn::before {
+  content: '▶';
+  color: var(--pixel-gold);
+  margin-right: 8px;
+}
+
+.theme-pixel .pixel-btn::after {
+  content: 'OK';
+  font-size: 0.6rem;
+  color: var(--pixel-cyan);
+}
+
+.theme-pixel .pixel-btn:hover {
+  background: #3d2c75;
+  border-color: var(--pixel-gold);
+  transform: translate(-2px, -2px);
+  box-shadow:
+    inset -3px -3px 0px #1f1442,
+    inset 3px 3px 0px #7c5ce6,
+    6px 6px 0px #000000;
+}
+
+.theme-pixel .pixel-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.theme-pixel .pixel-btn-primary {
+  background: #008a4b;
+  border-color: #b9f6ca;
+  box-shadow:
+    inset -3px -3px 0px #004d29,
+    inset 3px 3px 0px #00e676,
+    4px 4px 0px #000000;
+}
+
+.theme-pixel .pixel-btn-primary:hover {
+  background: #00a85c;
+  border-color: var(--pixel-gold);
+  box-shadow:
+    inset -3px -3px 0px #005c31,
+    inset 3px 3px 0px #5efc82,
+    6px 6px 0px #000000;
+}
+
+.theme-pixel .pixel-btn-danger {
+  background: #ad1457;
+  border-color: #ff80ab;
+  box-shadow:
+    inset -3px -3px 0px #6a0032,
+    inset 3px 3px 0px #ff4081,
+    4px 4px 0px #000000;
+}
+
+.theme-pixel .input-field {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+  background: #07040e;
+  border: 3px solid var(--pixel-cyan);
+  color: var(--pixel-gold);
+  font-size: 0.95rem;
+  margin-bottom: 1.1rem;
+  text-align: center;
+  box-shadow: inset 3px 3px 0 #000000, 4px 4px 0 #000000;
+}
+
+.theme-pixel .input-field:focus {
+  outline: none;
+  border-color: var(--pixel-gold);
+}
+
+/* HUD & Side Widgets in Pixel Art Theme */
+.theme-pixel .hud-top-left {
+  position: fixed;
+  top: 20px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 25;
+  padding: 8px 14px;
+  background: var(--pixel-bg-card);
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 4px 4px 0 #000000;
+}
+
+.theme-pixel .hud-score-num {
+  font-size: 1.05rem;
+  color: var(--pixel-gold);
+  text-shadow: 2px 2px 0 #000000;
+}
+
+.theme-pixel .circle-hud-btn {
+  border-radius: 0;
+  background: var(--pixel-bg-card);
+  color: var(--pixel-gold);
+  border: 3px solid #ffffff;
+  box-shadow:
+    inset -2px -2px 0 #080412,
+    inset 2px 2px 0 #5e43b0,
+    4px 4px 0 #000000;
+}
+
+.theme-pixel .circle-hud-btn:hover {
+  border-color: var(--pixel-gold);
+  transform: translate(-2px, -2px);
+}
+
+.theme-pixel .cyber-widget {
+  position: relative;
+  background: var(--pixel-bg-card);
+  border: 3px solid var(--pixel-border-light);
+  box-shadow:
+    0 0 0 3px var(--pixel-border-dark),
+    6px 6px 0 0 rgba(0, 0, 0, 0.75),
+    inset 0 0 0 3px var(--pixel-border-mid);
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.theme-pixel .cyber-widget-header {
+  width: 100%;
+  background: var(--pixel-bg-header);
+  border-bottom: 3px solid var(--pixel-border-light);
+  padding: 6px 0;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--pixel-gold);
+  text-shadow: 2px 2px 0 #000000;
+  letter-spacing: 1px;
+}
+
+.theme-pixel .cyber-widget-body {
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 86px;
+}
+
+.theme-pixel .board-wrapper {
+  position: relative;
+  padding: 4px;
+}
+
+.theme-pixel .board-container {
+  position: relative;
+  border: 4px solid var(--pixel-border-light);
+  background-color: #0b0914;
+  box-shadow:
+    0 0 0 4px var(--pixel-border-dark),
+    8px 8px 0 0 rgba(0, 0, 0, 0.8),
+    inset 0 0 0 3px var(--pixel-border-mid);
+  overflow: hidden;
+}
+
+.theme-pixel .score-widget-value {
+  font-size: 1rem;
+  color: var(--pixel-gold);
+  text-shadow: 2px 2px 0 #000000;
+  margin: 6px 0;
+}
+
+.theme-pixel .lines-sub-value {
+  font-size: 0.6rem;
+  color: var(--pixel-cyan);
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.theme-pixel .action-badge {
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: #ffffff;
+  background: #ad1457;
+  border: 2px solid var(--pixel-gold);
+  padding: 6px 8px;
+  box-shadow: 3px 3px 0 #000000;
+  text-shadow: 2px 2px 0 #000000;
+  margin-bottom: 6px;
+}
+
+.theme-pixel .ren-badge {
+  font-size: 0.78rem;
+  color: var(--pixel-gold);
+  text-shadow: 2px 2px 0 #c62828, 4px 4px 0 #000000;
+}
+
+.theme-pixel .board-floating-callout .main-callout {
+  font-size: 1.05rem;
+  color: var(--pixel-gold);
+  text-shadow:
+    2px 2px 0 #ff1744,
+    4px 4px 0 #000000;
+}
+
+.theme-pixel .board-floating-callout .sub-callout {
+  font-size: 0.82rem;
+  color: var(--pixel-cyan);
+  text-shadow: 2px 2px 0 #000000;
+}
+
+.theme-pixel .cyber-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 7, 22, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 15;
+}
+
+.theme-pixel .overlay-title {
+  font-size: 1.45rem;
+  color: var(--pixel-gold);
+  text-shadow: 3px 3px 0 #c62828, 6px 6px 0 #000000;
+  margin-bottom: 10px;
+}
+
+.theme-pixel .overlay-subtitle {
+  font-size: 0.65rem;
+  color: var(--pixel-cyan);
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 0 #000000;
+}
+
+.theme-pixel .controls-hint-grid {
+  border-top: 2px dashed rgba(224, 212, 255, 0.3);
+  font-size: 0.62rem;
+  line-height: 1.5;
+}
+
+.theme-pixel .controls-hint-grid span b {
+  color: var(--pixel-gold);
+}
+
+.theme-pixel .theme-modal-box {
+  background: var(--pixel-bg-card);
+  border: 4px solid var(--pixel-border-light);
+  border-radius: 0;
+  box-shadow: 8px 8px 0 #000000;
+}
