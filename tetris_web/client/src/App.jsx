@@ -255,6 +255,36 @@ const Logo = ({ themeId }) => {
       </svg>
     );
   }
+  if (themeId === 'hologram') {
+    // Point-Cloud Constellation Moon & Star SVG
+    const nodes = [
+      [62, 12], [46, 16], [32, 26], [23, 42], [22, 60], [30, 76],
+      [45, 86], [64, 88], [82, 80], [92, 66], [74, 72], [58, 66],
+      [48, 52], [48, 34], [55, 20]
+    ];
+    return (
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <polygon
+          points={nodes.map(n => n.join(',')).join(' ')}
+          fill="rgba(0, 246, 255, 0.12)"
+          stroke="rgba(0, 246, 255, 0.55)"
+          strokeWidth="1"
+          strokeDasharray="2 2"
+        />
+        {nodes.map(([cx, cy], idx) => (
+          <circle key={idx} cx={cx} cy={cy} r="2.3" fill="#00f6ff" />
+        ))}
+        {/* Star point cloud */}
+        <line x1="74" y1="25" x2="86" y2="25" stroke="#b8fdff" strokeWidth="1" />
+        <line x1="80" y1="19" x2="80" y2="31" stroke="#b8fdff" strokeWidth="1" />
+        <circle cx="80" cy="25" r="2.8" fill="#ffffff" />
+        <circle cx="74" cy="25" r="1.5" fill="#00f6ff" />
+        <circle cx="86" cy="25" r="1.5" fill="#00f6ff" />
+        <circle cx="80" cy="19" r="1.5" fill="#00f6ff" />
+        <circle cx="80" cy="31" r="1.5" fill="#00f6ff" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -914,19 +944,20 @@ export default function App() {
 
   const isClassic = currentTheme.layout === 'classic';
   const isPixel = currentTheme.layout === 'pixel';
+  const isHolo = currentTheme.layout === 'hologram';
 
   const modalClass = isClassic
     ? 'glass-panel title-screen'
-    : (isPixel ? 'pixel-modal-card' : 'cyber-modal-card');
+    : (isPixel ? 'pixel-modal-card' : (isHolo ? 'holo-modal-card' : 'cyber-modal-card'));
   const primaryBtnClass = isClassic
     ? 'btn btn-primary'
-    : (isPixel ? 'pixel-btn pixel-btn-primary' : 'cyber-btn cyber-btn-primary');
+    : (isPixel ? 'pixel-btn pixel-btn-primary' : (isHolo ? 'holo-btn holo-btn-primary' : 'cyber-btn cyber-btn-primary'));
   const secondaryBtnClass = isClassic
     ? 'btn'
-    : (isPixel ? 'pixel-btn' : 'cyber-btn');
+    : (isPixel ? 'pixel-btn' : (isHolo ? 'holo-btn' : 'cyber-btn'));
   const dangerBtnClass = isClassic
     ? 'btn'
-    : (isPixel ? 'pixel-btn pixel-btn-danger' : 'cyber-btn cyber-btn-danger');
+    : (isPixel ? 'pixel-btn pixel-btn-danger' : (isHolo ? 'holo-btn holo-btn-danger' : 'cyber-btn cyber-btn-danger'));
 
   const renderClassicGameUI = () => (
     <>
@@ -1250,7 +1281,9 @@ export default function App() {
         <div className={modalClass}>
           {!isClassic && (
             <div className="system-badge">
-              {isPixel ? '16-BIT ARCADE // EDITION' : 'CYBER MATRIX SYSTEM // VER 2.0'}
+              {isPixel
+                ? '16-BIT ARCADE // EDITION'
+                : (isHolo ? 'OPTICAL LIDAR // POINT CLOUD' : 'CYBER MATRIX SYSTEM // VER 2.0')}
             </div>
           )}
           <div className="logo-container">
@@ -1260,7 +1293,7 @@ export default function App() {
           <p className="subtitle-text">
             {isClassic
               ? 'Web Edition'
-              : (isPixel ? 'PIXEL ODYSSEY' : 'TACTICAL PRO EDITION')}
+              : (isPixel ? 'PIXEL ODYSSEY' : (isHolo ? 'HOLOGRAM PROJECTION' : 'TACTICAL PRO EDITION'))}
           </p>
 
           <button

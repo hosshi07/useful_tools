@@ -12,6 +12,14 @@ export const THEME_CATALOG = [
     loader: () => import('../themes/cyber/index.js')
   },
   {
+    id: 'hologram',
+    name: 'HOLO POINT CLOUD',
+    label: 'ホログラム点群 (Hologram)',
+    description: '3D空間点群データ（Point Cloud）＆光学ホログラム投影',
+    accent: '#00f6ff',
+    loader: () => import('../themes/hologram/index.js')
+  },
+  {
     id: 'pixel',
     name: 'PIXEL ODYSSEY',
     label: 'ピクセルアート (Pixel)',
@@ -24,7 +32,7 @@ export const THEME_CATALOG = [
     name: 'CLASSIC NEON',
     label: 'クラシック (Original)',
     description: '元のシンプルなグラスモーフィズム＆ネオンUI',
-    accent: '#00f0f0',
+    accent: '#a000f0',
     loader: () => import('../themes/classic/index.js')
   }
 ];

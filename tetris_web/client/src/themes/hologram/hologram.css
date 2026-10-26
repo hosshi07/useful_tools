@@ -1,0 +1,453 @@
+/* Hologram Point-Cloud Theme Styles (Lazy-Loaded) */
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
+
+.app-container.theme-hologram {
+  --holo-bg-deep: #010812;
+  --holo-cyan: #00f6ff;
+  --holo-cyan-bright: #b8fdff;
+  --holo-blue: #2979ff;
+  --holo-violet: #d94dff;
+  --holo-glass: rgba(3, 22, 42, 0.58);
+  --holo-border: rgba(0, 246, 255, 0.55);
+
+  font-family: 'Share Tech Mono', 'Orbitron', monospace, sans-serif;
+  background-color: var(--holo-bg-deep);
+  color: #e2fbff;
+
+  /* 3D Point-Cloud Matrix Background (Layered dot matrices + radial volumetric projection glow) */
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(21, 60, 120, 0.1) 45%, rgba(1, 8, 18, 0.96) 80%),
+    radial-gradient(rgba(0, 246, 255, 0.35) 1.25px, transparent 1.25px),
+    radial-gradient(rgba(77, 124, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(rgba(0, 246, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 246, 255, 0.04) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    24px 24px,
+    12px 12px,
+    48px 48px,
+    48px 48px;
+  background-position:
+    0 0,
+    0 0,
+    6px 6px,
+    0 0,
+    0 0;
+}
+
+/* Hologram Projection Modal Card */
+.theme-hologram .holo-modal-card {
+  position: relative;
+  background:
+    radial-gradient(rgba(0, 246, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(4, 28, 52, 0.72) 0%, rgba(2, 12, 26, 0.84) 100%);
+  background-size: 16px 16px, 100% 100%;
+  border: 1px solid var(--holo-border);
+  border-radius: 4px;
+  padding: 2.2rem 2rem;
+  max-width: 440px;
+  width: 92%;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 0 35px rgba(0, 246, 255, 0.18),
+    inset 0 0 30px rgba(0, 246, 255, 0.08);
+}
+
+/* Point-cloud corner fiducial markers (+) */
+.theme-hologram .holo-modal-card::before,
+.theme-hologram .holo-modal-card::after {
+  content: '+   +   +   +';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  font-size: 0.65rem;
+  letter-spacing: 6px;
+  color: rgba(0, 246, 255, 0.55);
+  pointer-events: none;
+}
+
+.theme-hologram .holo-modal-card::before { top: 6px; }
+.theme-hologram .holo-modal-card::after { bottom: 6px; }
+
+.theme-hologram .system-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  letter-spacing: 3px;
+  color: var(--holo-cyan);
+  background: rgba(0, 246, 255, 0.08);
+  border: 1px dashed rgba(0, 246, 255, 0.55);
+  padding: 4px 12px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px var(--holo-cyan);
+}
+
+.theme-hologram .logo-container svg {
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 0 12px rgba(0, 246, 255, 0.85));
+  animation: holoPulse 3s ease-in-out infinite;
+}
+
+@keyframes holoPulse {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: translateY(-6px) scale(1.03);
+    opacity: 1;
+  }
+}
+
+.theme-hologram .title-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.3rem;
+  font-weight: 900;
+  margin-bottom: 0.3rem;
+  color: #ffffff;
+  text-shadow:
+    0 0 10px var(--holo-cyan),
+    0 0 24px rgba(0, 246, 255, 0.55);
+  letter-spacing: 4px;
+}
+
+.theme-hologram .subtitle-text {
+  color: #7ce8ff;
+  margin-bottom: 1.4rem;
+  font-size: 0.84rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+/* Holographic Optical Buttons */
+.theme-hologram .holo-btn {
+  position: relative;
+  background:
+    radial-gradient(rgba(0, 246, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 44, 78, 0.55) 0%, rgba(4, 24, 48, 0.65) 100%);
+  background-size: 10px 10px, 100% 100%;
+  border: 1px solid rgba(0, 246, 255, 0.5);
+  color: #e6fcff;
+  padding: 13px 20px;
+  font-family: 'Share Tech Mono', 'Orbitron', monospace;
+  font-size: 1rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  width: 100%;
+  margin-bottom: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: inset 0 0 14px rgba(0, 246, 255, 0.12);
+}
+
+.theme-hologram .holo-btn::before {
+  content: '◈';
+  color: var(--holo-cyan);
+  font-size: 0.95rem;
+  text-shadow: 0 0 8px var(--holo-cyan);
+}
+
+.theme-hologram .holo-btn::after {
+  content: 'PCD//SYNC';
+  font-size: 0.64rem;
+  color: #7ce8ff;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.theme-hologram .holo-btn:hover {
+  background:
+    radial-gradient(rgba(0, 246, 255, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 246, 255, 0.24) 0%, rgba(16, 72, 120, 0.75) 100%);
+  background-size: 10px 10px, 100% 100%;
+  border-color: var(--holo-cyan-bright);
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 20px rgba(0, 246, 255, 0.4),
+    inset 0 0 18px rgba(0, 246, 255, 0.25);
+}
+
+.theme-hologram .holo-btn-primary {
+  border: 1.5px solid var(--holo-cyan);
+  box-shadow:
+    0 0 16px rgba(0, 246, 255, 0.25),
+    inset 0 0 18px rgba(0, 246, 255, 0.18);
+}
+
+.theme-hologram .holo-btn-danger {
+  border-color: rgba(255, 59, 127, 0.65);
+}
+
+.theme-hologram .holo-btn-danger::before {
+  color: #ff3b7f;
+  text-shadow: 0 0 8px #ff3b7f;
+}
+
+.theme-hologram .input-field {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(1, 10, 22, 0.82);
+  border: 1px dashed var(--holo-cyan);
+  color: var(--holo-cyan);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.2rem;
+  letter-spacing: 3px;
+  margin-bottom: 1.1rem;
+  text-align: center;
+  box-shadow: inset 0 0 14px rgba(0, 246, 255, 0.15);
+}
+
+.theme-hologram .input-field:focus {
+  outline: none;
+  border-style: solid;
+  box-shadow: 0 0 18px rgba(0, 246, 255, 0.4);
+}
+
+/* HUD & Point Cloud Widgets */
+.theme-hologram .hud-top-left {
+  position: fixed;
+  top: 22px;
+  left: 28px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 25;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: rgba(2, 16, 32, 0.68);
+  border: 1px solid rgba(0, 246, 255, 0.45);
+  box-shadow: 0 0 18px rgba(0, 246, 255, 0.2);
+  backdrop-filter: blur(6px);
+}
+
+.theme-hologram .star-icon {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 0 8px var(--holo-cyan));
+}
+
+.theme-hologram .hud-score-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e6fcff;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 10px var(--holo-cyan);
+}
+
+.theme-hologram .circle-hud-btn {
+  background: rgba(2, 20, 38, 0.78);
+  color: var(--holo-cyan);
+  border: 1.5px solid var(--holo-cyan);
+  box-shadow:
+    0 0 16px rgba(0, 246, 255, 0.35),
+    inset 0 0 10px rgba(0, 246, 255, 0.2);
+}
+
+.theme-hologram .cyber-widget {
+  position: relative;
+  background:
+    radial-gradient(rgba(0, 246, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(4, 28, 54, 0.55) 0%, rgba(2, 14, 28, 0.7) 100%);
+  background-size: 10px 10px, 100% 100%;
+  border: 1px solid rgba(0, 246, 255, 0.55);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow:
+    0 0 16px rgba(0, 246, 255, 0.15),
+    inset 0 0 14px rgba(0, 246, 255, 0.08);
+  margin-bottom: 12px;
+  backdrop-filter: blur(6px);
+}
+
+.theme-hologram .cyber-widget-header {
+  width: 100%;
+  background: rgba(0, 246, 255, 0.14);
+  border-bottom: 1px dashed rgba(0, 246, 255, 0.45);
+  padding: 5px 0;
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--holo-cyan-bright);
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px var(--holo-cyan);
+}
+
+.theme-hologram .cyber-widget-body {
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 86px;
+}
+
+.theme-hologram .board-wrapper {
+  position: relative;
+  padding: 4px;
+}
+
+.theme-hologram .corner-bracket {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--holo-cyan);
+  border-style: solid;
+  z-index: 5;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px var(--holo-cyan));
+}
+
+.theme-hologram .corner-bracket.tl { top: -2px; left: -2px; border-width: 2px 0 0 2px; }
+.theme-hologram .corner-bracket.tr { top: -2px; right: -2px; border-width: 2px 2px 0 0; }
+
+.theme-hologram .board-container {
+  position: relative;
+  border: 1.5px solid rgba(0, 246, 255, 0.7);
+  border-radius: 2px;
+  background-color: rgba(2, 10, 22, 0.85);
+  box-shadow:
+    0 0 30px rgba(0, 246, 255, 0.22),
+    inset 0 0 35px rgba(0, 246, 255, 0.12);
+  overflow: hidden;
+  transition: transform 0.06s ease-out;
+}
+
+/* Hologram Emitter Projector Base under the Board */
+.theme-hologram .board-base-layers {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  margin-top: 3px;
+}
+
+.theme-hologram .board-base-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border: 1px dashed rgba(0, 246, 255, 0.55);
+  background: radial-gradient(ellipse at center, rgba(0, 246, 255, 0.28) 0%, transparent 75%);
+  transform: perspective(180px) rotateX(30deg);
+}
+
+.theme-hologram .board-base-layer.l1 {
+  top: 0;
+  height: 6px;
+  left: -6px;
+  right: -6px;
+  border-style: solid;
+  border-color: var(--holo-cyan);
+  box-shadow: 0 0 14px rgba(0, 246, 255, 0.5);
+}
+.theme-hologram .board-base-layer.l2 { top: 7px; height: 6px; left: 4px; right: 4px; opacity: 0.7; }
+.theme-hologram .board-base-layer.l3 { top: 13px; height: 5px; left: 14px; right: 14px; opacity: 0.4; }
+
+.theme-hologram .score-widget-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 12px var(--holo-cyan);
+  margin: 4px 0;
+}
+
+.theme-hologram .lines-sub-value {
+  font-size: 0.74rem;
+  color: #7ce8ff;
+  letter-spacing: 1.5px;
+}
+
+.theme-hologram .action-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(0, 246, 255, 0.16);
+  border: 1px dashed var(--holo-cyan);
+  padding: 5px 10px;
+  text-shadow: 0 0 8px var(--holo-cyan);
+  box-shadow: 0 0 14px rgba(0, 246, 255, 0.3);
+  margin-bottom: 6px;
+}
+
+.theme-hologram .ren-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--holo-violet);
+  text-shadow: 0 0 10px var(--holo-violet);
+  letter-spacing: 1.5px;
+}
+
+.theme-hologram .board-floating-callout .main-callout {
+  text-shadow:
+    0 0 10px var(--holo-cyan),
+    0 0 24px var(--holo-violet);
+}
+
+.theme-hologram .cyber-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(rgba(0, 246, 255, 0.12) 1px, transparent 1px),
+    rgba(2, 10, 22, 0.86);
+  background-size: 12px 12px, 100% 100%;
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  z-index: 15;
+}
+
+.theme-hologram .overlay-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: var(--holo-cyan);
+  letter-spacing: 3px;
+  text-shadow: 0 0 14px var(--holo-cyan);
+  margin-bottom: 6px;
+}
+
+.theme-hologram .overlay-subtitle {
+  font-size: 0.8rem;
+  color: #7ce8ff;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+
+.theme-hologram .opponent-header {
+  text-align: center;
+  margin-bottom: 6px;
+  color: var(--holo-cyan);
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+}
+
+.theme-hologram .controls-hint-grid {
+  border-top: 1px dashed rgba(0, 246, 255, 0.3);
+  color: #9beeff;
+}
+
+.theme-hologram .controls-hint-grid span b {
+  color: var(--holo-cyan);
+}
+
+.theme-hologram .theme-modal-box {
+  background:
+    radial-gradient(rgba(0, 246, 255, 0.14) 1px, transparent 1px),
+    rgba(3, 18, 36, 0.95);
+  background-size: 14px 14px, 100% 100%;
+  border: 1.5px solid var(--holo-cyan);
+  box-shadow: 0 0 32px rgba(0, 246, 255, 0.3);
+}
