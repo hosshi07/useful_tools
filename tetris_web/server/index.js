@@ -18,43 +18,74 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3005;
 
 // Keep track of rooms
-// rooms = { roomCode: [socketId1, socketId2] }
+// rooms = { roomCode: { players: [socketId1, socketId2], createdAt: number } }
 const rooms = {};
+
+function getAvailableRooms() {
+  const list = [];
+  for (const [code, info] of Object.entries(rooms)) {
+    const players = Array.isArray(info) ? info : info.players;
+    if (players && players.length === 1) {
+      list.push({
+        roomCode: code,
+        playersCount: players.length,
+        maxPlayers: 2,
+        createdAt: info.createdAt || Date.now()
+      });
+    }
+  }
+  return list;
+}
+
+function broadcastRoomsList() {
+  io.emit('rooms_list', getAvailableRooms());
+}
 
 io.on('connection', (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
-  socket.on('join_room', (roomCode) => {
+  // Send current waiting rooms upon request (or reload button click)
+  socket.on('get_rooms', () => {
+    socket.emit('rooms_list', getAvailableRooms());
+  });
+
+  socket.on('join_room', (rawRoomCode) => {
+    const roomCode = String(rawRoomCode || '').trim();
+    if (!roomCode) return;
+
     if (!rooms[roomCode]) {
-      rooms[roomCode] = [];
+      rooms[roomCode] = { players: [], createdAt: Date.now() };
     }
 
-    if (rooms[roomCode].length >= 2) {
+    const roomObj = rooms[roomCode];
+    if (roomObj.players.includes(socket.id)) {
+      return;
+    }
+
+    if (roomObj.players.length >= 2) {
       socket.emit('room_full', roomCode);
+      broadcastRoomsList();
       return;
     }
 
     socket.join(roomCode);
-    rooms[roomCode].push(socket.id);
-    
-    console.log(`User ${socket.id} joined room ${roomCode}`);
+    roomObj.players.push(socket.id);
+
+    console.log(`User ${socket.id} joined room ${roomCode} (${roomObj.players.length}/2)`);
 
     socket.emit('joined_room', roomCode);
+    broadcastRoomsList();
 
-    if (rooms[roomCode].length === 2) {
+    if (roomObj.players.length === 2) {
       io.to(roomCode).emit('game_start');
     }
   });
 
   socket.on('send_state', (data) => {
-    // data: { roomCode, boardState, score }
-    // Broadcast to the other player in the room
     socket.to(data.roomCode).emit('receive_state', data);
   });
 
   socket.on('send_garbage', (data) => {
-    // data: { roomCode, lines }
-    // Broadcast to the other player in the room
     socket.to(data.roomCode).emit('receive_garbage', data);
   });
 
@@ -65,26 +96,33 @@ io.on('connection', (socket) => {
   socket.on('leave_room', (roomCode) => {
     socket.leave(roomCode);
     if (rooms[roomCode]) {
-      rooms[roomCode] = rooms[roomCode].filter(id => id !== socket.id);
-      if (rooms[roomCode].length === 0) {
+      rooms[roomCode].players = rooms[roomCode].players.filter(id => id !== socket.id);
+      if (rooms[roomCode].players.length === 0) {
         delete rooms[roomCode];
       } else {
         socket.to(roomCode).emit('opponent_disconnected');
       }
+      broadcastRoomsList();
     }
   });
 
   socket.on('disconnect', () => {
     console.log(`User Disconnected: ${socket.id}`);
-    // Find rooms this user was in and remove them
+    let changed = false;
     for (const roomCode in rooms) {
-      rooms[roomCode] = rooms[roomCode].filter(id => id !== socket.id);
-      if (rooms[roomCode].length === 0) {
-        delete rooms[roomCode];
-      } else {
-        // Notify remaining player
-        io.to(roomCode).emit('opponent_disconnected');
+      const beforeLen = rooms[roomCode].players.length;
+      rooms[roomCode].players = rooms[roomCode].players.filter(id => id !== socket.id);
+      if (rooms[roomCode].players.length !== beforeLen) {
+        changed = true;
+        if (rooms[roomCode].players.length === 0) {
+          delete rooms[roomCode];
+        } else {
+          io.to(roomCode).emit('opponent_disconnected');
+        }
       }
+    }
+    if (changed) {
+      broadcastRoomsList();
     }
   });
 });

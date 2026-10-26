@@ -323,6 +323,7 @@ export default function App() {
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
   const [roomCode, setRoomCode] = useState('');
+  const [availableRooms, setAvailableRooms] = useState([]);
   const [socket, setSocket] = useState(null);
 
   const [score, setScore] = useState(0);
@@ -856,7 +857,15 @@ export default function App() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('joined_room', () => {
+    socket.on('rooms_list', (list) => {
+      setAvailableRooms(Array.isArray(list) ? list : []);
+    });
+
+    socket.on('joined_room', (joinedCode) => {
+      if (joinedCode) {
+        setRoomCode(joinedCode);
+        roomCodeRef.current = joinedCode;
+      }
       setAppState('2p_wait');
     });
 
@@ -922,6 +931,7 @@ export default function App() {
     });
 
     return () => {
+      socket.off('rooms_list');
       socket.off('joined_room');
       socket.off('room_full');
       socket.off('game_start');
@@ -1312,6 +1322,7 @@ export default function App() {
             onClick={() => {
               sound.uiClick();
               setAppState('join_room');
+              socket?.emit('get_rooms');
             }}
           >
             {isClassic ? '2 Players (Online)' : '2 PLAYERS (ONLINE)'}
@@ -1403,44 +1414,121 @@ export default function App() {
       )}
 
       {appState === 'join_room' && (
-        <div className={modalClass}>
+        <div className={`${modalClass} lobby-modal-wide`}>
           {!isClassic && (
             <div className="system-badge">
-              {isPixel ? 'MULTIPLAYER // VS LINK' : 'NETWORK // MULTIPLAYER'}
+              {isPixel ? 'MULTIPLAYER // VS LINK' : (isHolo ? 'OPTICAL // LOBBY' : 'NETWORK // MULTIPLAYER')}
             </div>
           )}
-          <h2 className="title-text" style={{ fontSize: '1.65rem', marginBottom: '12px' }}>
-            {isClassic ? 'Join Room' : 'ACCESS ROOM'}
+          <h2 className="title-text" style={{ fontSize: '1.65rem', marginBottom: '6px' }}>
+            {isClassic ? 'Online Lobby' : 'ONLINE MATCH LOBBY'}
           </h2>
-          <p className="subtitle-text" style={{ marginBottom: '1.2rem' }}>
-            {isClassic ? 'Enter Room Code' : 'ENTER SYNCHRONIZATION CODE'}
+          <p className="subtitle-text" style={{ marginBottom: '0.8rem' }}>
+            {isClassic ? 'ルームを作成するか、右の一覧から選択して参加' : 'CREATE A NEW ROOM OR SELECT AN ACTIVE ROOM'}
           </p>
-          <input
-            className="input-field"
-            placeholder={isClassic ? 'Enter Room Code' : 'ROOM CODE'}
-            value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value)}
-            maxLength={10}
-          />
-          <button
-            className={primaryBtnClass}
-            onClick={() => {
-              if (roomCode.trim().length > 0) {
-                sound.uiSelect();
-                socket.emit('join_room', roomCode.trim());
-              }
-            }}
-          >
-            {isClassic ? 'Join / Create' : 'CONNECT (参加/作成)'}
-          </button>
+
+          <div className="lobby-split-container">
+            {/* Left Column: Create Room */}
+            <div className="lobby-column">
+              <div>
+                <div className="lobby-col-header">
+                  <span className="lobby-col-title">CREATE ROOM (ルーム作成)</span>
+                </div>
+                <p className="lobby-col-desc">
+                  任意のルーム名を決めて作成すると待機状態になり、他プレイヤーの一覧に表示されます。
+                </p>
+                <input
+                  className="input-field"
+                  placeholder={isClassic ? 'ルーム名を入力' : 'ENTER ROOM NAME'}
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && roomCode.trim().length > 0) {
+                      sound.uiSelect();
+                      socket.emit('join_room', roomCode.trim());
+                    }
+                  }}
+                  maxLength={14}
+                />
+              </div>
+
+              <button
+                className={primaryBtnClass}
+                style={{ marginBottom: 0 }}
+                onClick={() => {
+                  if (roomCode.trim().length > 0) {
+                    sound.uiSelect();
+                    socket.emit('join_room', roomCode.trim());
+                  }
+                }}
+              >
+                {isClassic ? 'ルーム作成 (Create)' : 'CREATE ROOM (作成)'}
+              </button>
+            </div>
+
+            {/* Right Column: Active Waiting Rooms List + Reload Button */}
+            <div className="lobby-column">
+              <div>
+                <div className="lobby-col-header">
+                  <span className="lobby-col-title">
+                    WAITING ROOMS ({availableRooms.length})
+                  </span>
+                  <button
+                    type="button"
+                    className="lobby-reload-btn"
+                    onClick={() => {
+                      sound.uiClick();
+                      socket?.emit('get_rooms');
+                    }}
+                    title="最新のルーム一覧を取得"
+                  >
+                    ↻ RELOAD (更新)
+                  </button>
+                </div>
+
+                <div className="lobby-rooms-list">
+                  {availableRooms.length === 0 ? (
+                    <div className="lobby-empty-state">
+                      現在待機中のルームはありません。<br />
+                      左側から新しいルームを作成してください。
+                    </div>
+                  ) : (
+                    availableRooms.map((rm) => (
+                      <button
+                        key={rm.roomCode}
+                        type="button"
+                        className="lobby-room-item"
+                        onClick={() => {
+                          sound.uiSelect();
+                          setRoomCode(rm.roomCode);
+                          roomCodeRef.current = rm.roomCode;
+                          socket.emit('join_room', rm.roomCode);
+                        }}
+                      >
+                        <span className="lobby-room-name">
+                          <span>▸</span>
+                          <span>{rm.roomCode}</span>
+                        </span>
+                        <span className="lobby-room-badge">
+                          JOIN ({rm.playersCount}/{rm.maxPlayers})
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button
             className={secondaryBtnClass}
+            style={{ marginBottom: 0 }}
             onClick={() => {
               sound.uiClick();
               setAppState('title');
             }}
           >
-            {isClassic ? 'Back' : 'BACK (戻る)'}
+            {isClassic ? 'Back to Title (戻る)' : 'BACK TO TITLE (戻る)'}
           </button>
         </div>
       )}
